@@ -3,12 +3,19 @@ import os
 import requests
 import boto3
 from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
 from decimal import *
 import time
 import datetime
 import numpy as np
 import pandas as pd
 import plotly.express as px 
+
+# Read AWS Credentials from Environment Variable
+if "aws_access_key_id" not in st.session_state:
+    st.session_state['aws_access_key_id'] = os.environ['AWS_ACCESS_KEY_ID']
+if "aws_secret_access_key" not in st.session_state:
+    st.session_state['aws_secret_access_key'] = os.environ['AWS_SECRET_ACCESS_KEY']
 
 # Query range
 start_date = "01/12/2023"
@@ -20,23 +27,30 @@ today_date_timestamp = int(time.time()) * 1000
 IOT_TABLE_NAME = "iot_data_ddb"
 PARTITION_KEY = 'sample_time'
 
-@st.cache_data
+#@st.cache_data
 def load_iot_table():
     # DynamoDB Connection
+
     dynamo_client  =  boto3.resource(
         service_name = 'dynamodb',
         region_name = 'us-east-2',
         aws_access_key_id = st.session_state['aws_access_key_id'],
         aws_secret_access_key = st.session_state['aws_secret_access_key']
     )
-    iot_table = dynamo_client.Table(IOT_TABLE_NAME)
-
+    try:
+        iot_table = dynamo_client.Table(IOT_TABLE_NAME)
+    except ClientError as e:
+        return (pd.DataFrame())
+    
     # Query - It is not the most performatic way. Re-evaluate to use "query" statement
-    response = iot_table.scan(
-        FilterExpression=Key(PARTITION_KEY).between(start_date_timestamp, today_date_timestamp)
-        #FilterExpression=Key(PARTITION_KEY).between(1701966506162, 1701966531596)
-    )
-
+    try:
+        response = iot_table.scan(
+            FilterExpression=Key(PARTITION_KEY).between(start_date_timestamp, today_date_timestamp)
+            #FilterExpression=Key(PARTITION_KEY).between(1701966506162, 1701966531596)
+        )
+    except ClientError as e:
+        return (pd.DataFrame())
+    
     # Convert into DataFrame
     iot_df = pd.DataFrame(response['Items'])
     iot_df['temperature'] = iot_df['device_data'].map(lambda d : d['temperature'])
@@ -48,7 +62,10 @@ def load_iot_table():
     return (iot_df)
 
 iot_df = load_iot_table()
-
+if len(iot_df) == 0:
+    st.write ("Please verify the AWS Credentials.")
+    exit()
+    
 # Presentation
 temp_col, light_col = st.columns(2,gap="small")
 
