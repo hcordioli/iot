@@ -9,7 +9,8 @@ import time
 import datetime
 import numpy as np
 import pandas as pd
-import plotly.express as px 
+import plotly.express as px
+import plotly.graph_objects as go
 
 # Read AWS Credentials from Environment Variable
 if "aws_access_key_id" not in st.session_state:
@@ -53,16 +54,28 @@ def load_iot_table():
     
     # Convert into DataFrame
     iot_df = pd.DataFrame(response['Items'])
-    iot_df['temperature'] = iot_df['device_data'].map(lambda d : d['temperature'])
-    iot_df['light'] = iot_df['device_data'].map(lambda d : d['light'])
-    iot_df = iot_df.drop(columns=["device_data"])
-    iot_df['sample_time'] = iot_df['sample_time'].astype(np.int64)
-    iot_df['sample_time'] = pd.to_datetime(iot_df['sample_time'],unit="ms")
-    iot_df = iot_df.sort_values("sample_time",ascending=True)
-    return (iot_df)
 
-iot_df = load_iot_table()
-if len(iot_df) == 0:
+    # Temperature DF
+    temp_df = iot_df[iot_df['device_data'].astype(str).str.contains("temperature")==True].copy()
+    temp_df['temperature'] = temp_df['device_data'].map(lambda d : d['temperature'])
+    temp_df['device'] = temp_df['device_data'].map(lambda d : d['device'] if "device" in d else "avr")
+    temp_df = temp_df.drop(columns=['device_data'])
+    temp_df['sample_time'] = temp_df['sample_time'].astype(np.int64)
+    temp_df['sample_time'] = pd.to_datetime(temp_df['sample_time'],unit="ms")
+    temp_df = temp_df.sort_values("sample_time",ascending=True)
+
+    light_df = iot_df[iot_df['device_data'].astype(str).str.contains("light")==True].copy()
+    light_df['light'] = light_df['device_data'].map(lambda d : d['light'])
+    light_df['device'] = light_df['device_data'].map(lambda d : d['device'] if "device" in d else "avr")
+    light_df = light_df.drop(columns=['device_data'])
+    light_df['sample_time'] = light_df['sample_time'].astype(np.int64)
+    light_df['sample_time'] = pd.to_datetime(light_df['sample_time'],unit="ms")
+    light_df = light_df.sort_values("sample_time",ascending=True)
+
+    return (temp_df,light_df)
+
+temp_df,light_df = load_iot_table()
+if len(temp_df) == 0 or len(light_df) == 0 :
     st.write ("Please verify the AWS Credentials.")
     exit()
     
@@ -70,19 +83,64 @@ if len(iot_df) == 0:
 temp_col, light_col = st.columns(2,gap="small")
 
 # Temperature
-fig_temp = px.line(
-    iot_df,
-    x='sample_time',
-    y="temperature",
-    title="Temperatura"
+#fig_temp = px.line(
+#    iot_df,
+#    x='sample_time',
+#    y="temperature",
+#    title="Temperatura"
+#)
+# Create figure
+fig_temp = go.Figure()
+
+fig_temp.add_trace(
+    go.Scatter(x=list(temp_df.sample_time), y=list(temp_df.temperature)))
+
+# Add range slider
+fig_temp.update_layout(
+    title="Variação de Temperatura",
+    xaxis_title="Tempo",
+    yaxis_title="Temperatura (C)",
+    xaxis=dict(
+        rangeselector=dict(
+            buttons=list([
+                dict(count=1,
+                     label="1h",
+                     step="hour",
+                     stepmode="backward"),
+                dict(count=1,
+                     label="1d",
+                     step="day",
+                     stepmode="backward"),
+                dict(count=1,
+                     label="1m",
+                     step="month",
+                     stepmode="backward"),
+                dict(count=1,
+                     label="1y",
+                     step="year",
+                     stepmode="backward"),
+                dict(step="all")
+            ])
+        ),
+        rangeslider=dict(
+            visible=True
+        ),
+        type="date"
+    )
 )
+
 temp_col.plotly_chart(fig_temp,use_container_width=True)
 
 # Temperature
 fig_light = px.line(
-    iot_df,
+    light_df,
     x='sample_time',
     y="light",
-    title="Luminosidade"
+    title="Variação de Luminosidade",
+    labels={
+        "sample_time": "Tempo",
+        "light": "Luminosidade"
+    }
 )
+
 light_col.plotly_chart(fig_light,use_container_width=True)
