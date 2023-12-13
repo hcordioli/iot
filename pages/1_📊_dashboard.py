@@ -93,7 +93,22 @@ temp_col, light_col = st.columns(2,gap="small")
 fig_temp = go.Figure()
 
 fig_temp.add_trace(
-    go.Scatter(x=list(temp_df.sample_time), y=list(temp_df.temperature)))
+    go.Scatter(
+        x=list(temp_df.loc[temp_df['device'] == "avr"]['sample_time']), 
+        y=list(temp_df.loc[temp_df['device'] == "avr"]['temperature']),
+        mode='lines',
+        name='avr'
+    )
+)
+
+fig_temp.add_trace(
+    go.Scatter(
+        x=list(temp_df.loc[temp_df['device'] == "esp32"]['sample_time']), 
+        y=list(temp_df.loc[temp_df['device'] == "esp32"]['temperature']),
+        mode='lines',
+        name='esp32'
+    )
+)
 
 # Add range slider
 fig_temp.update_layout(
@@ -131,11 +146,12 @@ fig_temp.update_layout(
 
 temp_col.plotly_chart(fig_temp,use_container_width=True)
 
-# Temperature
+# Light
 fig_light = px.line(
     light_df,
     x='sample_time',
     y="light",
+    color="device",
     title="Variação de Luminosidade",
     labels={
         "sample_time": "Tempo",
