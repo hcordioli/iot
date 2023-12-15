@@ -19,7 +19,7 @@ if "aws_secret_access_key" not in st.session_state:
     st.session_state['aws_secret_access_key'] = os.environ['AWS_SECRET_ACCESS_KEY']
 
 # Query range
-start_date = "01/12/2023"
+start_date = "01/01/2023"
 my_time = time.strptime(start_date, "%d/%m/%Y")
 start_date_timestamp = int(time.mktime(my_time)) * 1000
 today_date_timestamp = int(time.time()) * 1000
@@ -54,7 +54,7 @@ def load_iot_table():
     
     # Convert into DataFrame
     iot_df = pd.DataFrame(response['Items'])
-
+    
     # Temperature DF
     temp_df = iot_df[iot_df['device_data'].astype(str).str.contains("temperature")==True].copy()
     temp_df['temperature'] = temp_df['device_data'].map(lambda d : d['temperature'])
@@ -147,16 +147,61 @@ fig_temp.update_layout(
 temp_col.plotly_chart(fig_temp,use_container_width=True)
 
 # Light
-fig_light = px.line(
-    light_df,
-    x='sample_time',
-    y="light",
-    color="device",
-    title="Variação de Luminosidade",
-    labels={
-        "sample_time": "Tempo",
-        "light": "Luminosidade"
-    }
+#fig_light = px.line(
+#    light_df,
+#    x='sample_time',
+#    y="light",
+#    color="device",
+#    title="Variação de Luminosidade",
+#    labels={
+#       "sample_time": "Tempo",
+#       "light": "Luminosidade"
+#   }
+#)
+
+# Ligght - Create figure
+fig_light = go.Figure()
+
+fig_light.add_trace(
+    go.Scatter(
+        x=list(light_df.loc[light_df['device'] == "avr"]['sample_time']), 
+        y=list(light_df.loc[light_df['device'] == "avr"]['light']),
+        mode='lines',
+        name='avr'
+    )
 )
 
+# Add range slider
+fig_light.update_layout(
+    title="Variação de Luminosidade",
+    xaxis_title="Tempo",
+    yaxis_title="Luminosidade (Lumens)",
+    xaxis=dict(
+        rangeselector=dict(
+            buttons=list([
+                dict(count=1,
+                     label="1h",
+                     step="hour",
+                     stepmode="backward"),
+                dict(count=1,
+                     label="1d",
+                     step="day",
+                     stepmode="backward"),
+                dict(count=1,
+                     label="1m",
+                     step="month",
+                     stepmode="backward"),
+                dict(count=1,
+                     label="1y",
+                     step="year",
+                     stepmode="backward"),
+                dict(step="all")
+            ])
+        ),
+        rangeslider=dict(
+            visible=True
+        ),
+        type="date"
+    )
+)
 light_col.plotly_chart(fig_light,use_container_width=True)
