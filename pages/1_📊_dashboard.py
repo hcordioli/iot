@@ -26,6 +26,8 @@ today_date_timestamp = int(time.time()) * 1000
 
 # Table info
 IOT_TABLE_NAME = "iot_data_ddb"
+TEMP_ALARMS_TABLE_NAME = "temperature_alarms"
+
 PARTITION_KEY = 'sample_time'
 
 #@st.cache_data
@@ -40,20 +42,24 @@ def load_iot_table():
     )
     try:
         iot_table = dynamo_client.Table(IOT_TABLE_NAME)
+        temp_alarms_table = dynamo_client.Table(TEMP_ALARMS_TABLE_NAME)
     except ClientError as e:
-        return (pd.DataFrame())
+        return (pd.DataFrame(),pd.DataFrame(),pd.DataFrame())
     
     # Query - It is not the most performatic way. Re-evaluate to use "query" statement
     try:
         response = iot_table.scan(
             FilterExpression=Key(PARTITION_KEY).between(start_date_timestamp, today_date_timestamp)
-            #FilterExpression=Key(PARTITION_KEY).between(1701966506162, 1701966531596)
+        )
+        temp_alarms = temp_alarms_table.scan(
+            FilterExpression=Key(PARTITION_KEY).between(start_date_timestamp, today_date_timestamp)
         )
     except ClientError as e:
-        return (pd.DataFrame())
+        return (pd.DataFrame(),pd.DataFrame(),pd.DataFrame())
     
     # Convert into DataFrame
     iot_df = pd.DataFrame(response['Items'])
+    temp_alarms_df = pd.DataFrame(temp_alarms['Items'])
     
     # Temperature DF
     temp_df = iot_df[iot_df['device_data'].astype(str).str.contains("temperature")==True].copy()
@@ -72,15 +78,16 @@ def load_iot_table():
     light_df['sample_time'] = pd.to_datetime(light_df['sample_time'],unit="ms")
     light_df = light_df.sort_values("sample_time",ascending=True)
 
-    return (temp_df,light_df)
+    return (temp_df,light_df, temp_alarms_df)
 
-temp_df,light_df = load_iot_table()
+temp_df,light_df, temp_alarms_df = load_iot_table()
 if len(temp_df) == 0 or len(light_df) == 0 :
     st.write ("Please verify the AWS Credentials.")
     exit()
     
 # Presentation
 temp_col, light_col = st.columns(2,gap="small")
+temp_alarms_col = st.container()
 
 # Temperature
 #fig_temp = px.line(
@@ -91,11 +98,19 @@ temp_col, light_col = st.columns(2,gap="small")
 #)
 # Create figure
 fig_temp = go.Figure()
+temp_df = temp_df[['sample_time','temperature','device']]
+temp_avr_df = temp_df.loc[temp_df['device'] == "avr"][['sample_time','temperature']]
+temp_esp_df = temp_df.loc[temp_df['device'] == "esp"][['sample_time','temperature']]
+
+temp_avr_df.set_index("sample_time",inplace=True)
+temp_avr_df = temp_avr_df.resample('1min').mean()
+temp_esp_df.set_index("sample_time",inplace=True)
+temp_esp_df = temp_esp_df.resample('1min').mean()
 
 fig_temp.add_trace(
     go.Scatter(
-        x=list(temp_df.loc[temp_df['device'] == "avr"]['sample_time']), 
-        y=list(temp_df.loc[temp_df['device'] == "avr"]['temperature']),
+        x=list(temp_avr_df.index), 
+        y=list(temp_avr_df['temperature']),
         mode='lines',
         name='avr'
     )
@@ -103,8 +118,8 @@ fig_temp.add_trace(
 
 fig_temp.add_trace(
     go.Scatter(
-        x=list(temp_df.loc[temp_df['device'] == "esp32"]['sample_time']), 
-        y=list(temp_df.loc[temp_df['device'] == "esp32"]['temperature']),
+        x=list(temp_esp_df.index), 
+        y=list(temp_esp_df['temperature']),
         mode='lines',
         name='esp32'
     )
@@ -159,13 +174,21 @@ temp_col.plotly_chart(fig_temp,use_container_width=True)
 #   }
 #)
 
-# Ligght - Create figure
+# Light - Create figure
 fig_light = go.Figure()
+light_df = light_df[['sample_time','light','device']]
+light_avr_df = light_df.loc[light_df['device'] == "avr"][['sample_time','light']]
+light_esp_df = light_df.loc[light_df['device'] == "esp"][['sample_time','light']]
+
+light_avr_df.set_index("sample_time",inplace=True)
+light_avr_df = light_avr_df.resample('1min').mean()
+light_esp_df.set_index("sample_time",inplace=True)
+light_esp_df = light_esp_df.resample('1min').mean()
 
 fig_light.add_trace(
     go.Scatter(
-        x=list(light_df.loc[light_df['device'] == "avr"]['sample_time']), 
-        y=list(light_df.loc[light_df['device'] == "avr"]['light']),
+        x=list(light_esp_df.index), 
+        y=list(light_esp_df['light']),
         mode='lines',
         name='avr'
     )
@@ -205,3 +228,53 @@ fig_light.update_layout(
     )
 )
 light_col.plotly_chart(fig_light,use_container_width=True)
+
+# Temperature Alarms
+fig_temp_alarms = go.Figure()
+temp_alarms_df.set_index("sample_time",inplace=True)
+
+fig_temp_alarms.add_trace(
+    go.Scatter(
+        x=list(temp_alarms_df.index), 
+        y=list(temp_alarms_df['average_temperature']),
+        marker_size=5,
+        marker_color=['#F55030' for i in range(0,len(temp_alarms_df)) ],
+        mode='markers',
+        text=temp_alarms_df['temperature_threshold']
+    )
+)
+
+# Add range slider
+fig_temp_alarms.update_layout(
+    title="Alarmes de Temperatura Média no Último Minuto",
+    xaxis_title="Tempo",
+    yaxis_title="Temperatura Média (Celsius)",
+    xaxis=dict(
+        rangeselector=dict(
+            buttons=list([
+                dict(count=1,
+                     label="1h",
+                     step="hour",
+                     stepmode="backward"),
+                dict(count=1,
+                     label="1d",
+                     step="day",
+                     stepmode="backward"),
+                dict(count=1,
+                     label="1m",
+                     step="month",
+                     stepmode="backward"),
+                dict(count=1,
+                     label="1y",
+                     step="year",
+                     stepmode="backward"),
+                dict(step="all")
+            ])
+        ),
+        rangeslider=dict(
+            visible=True
+        ),
+        type="date"
+    )
+)
+temp_alarms_col.plotly_chart(fig_temp_alarms,use_container_width=True)
