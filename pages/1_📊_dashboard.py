@@ -51,6 +51,10 @@ def load_iot_table():
         response = iot_table.scan(
             FilterExpression=Key(PARTITION_KEY).between(start_date_timestamp, today_date_timestamp)
         )
+    except ClientError as e:
+        return (pd.DataFrame(),pd.DataFrame(),pd.DataFrame())
+
+    try:
         temp_alarms = temp_alarms_table.scan(
             FilterExpression=Key(PARTITION_KEY).between(start_date_timestamp, today_date_timestamp)
         )
@@ -69,7 +73,8 @@ def load_iot_table():
     temp_df['sample_time'] = temp_df['sample_time'].astype(np.int64)
     temp_df['sample_time'] = pd.to_datetime(temp_df['sample_time'],unit="ms")
     temp_df = temp_df.sort_values("sample_time",ascending=True)
-
+    print ('\n\n\n',temp_df,'\n\n\n')
+    
     light_df = iot_df[iot_df['device_data'].astype(str).str.contains("light")==True].copy()
     light_df['light'] = light_df['device_data'].map(lambda d : d['light'])
     light_df['device'] = light_df['device_data'].map(lambda d : d['device'] if "device" in d else "avr")
@@ -100,7 +105,7 @@ temp_alarms_col = st.container()
 fig_temp = go.Figure()
 temp_df = temp_df[['sample_time','temperature','device']]
 temp_avr_df = temp_df.loc[temp_df['device'] == "avr"][['sample_time','temperature']]
-temp_esp_df = temp_df.loc[temp_df['device'] == "esp"][['sample_time','temperature']]
+temp_esp_df = temp_df.loc[temp_df['device'] == "esp32"][['sample_time','temperature']]
 
 temp_avr_df.set_index("sample_time",inplace=True)
 temp_avr_df = temp_avr_df.resample('1min').mean()
