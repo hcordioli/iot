@@ -9,3 +9,4 @@ nltk
 pypdf
 llama_index
 openai
+pypdf
