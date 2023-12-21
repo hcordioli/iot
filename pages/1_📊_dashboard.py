@@ -183,7 +183,7 @@ temp_col.plotly_chart(fig_temp,use_container_width=True)
 fig_light = go.Figure()
 light_df = light_df[['sample_time','light','device']]
 light_avr_df = light_df.loc[light_df['device'] == "avr"][['sample_time','light']]
-light_esp_df = light_df.loc[light_df['device'] == "esp"][['sample_time','light']]
+light_esp_df = light_df.loc[light_df['device'] == "esp32"][['sample_time','light']]
 
 light_avr_df.set_index("sample_time",inplace=True)
 light_avr_df = light_avr_df.resample('1min').mean()
