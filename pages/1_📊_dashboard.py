@@ -224,7 +224,6 @@ fig_light.add_trace(
     )
 )
 
-
 # Add range slider
 fig_light.update_layout(
     title="Variação de Luminosidade",
@@ -261,51 +260,52 @@ fig_light.update_layout(
 light_col.plotly_chart(fig_light,use_container_width=True)
 
 # Temperature Alarms
-fig_temp_alarms = go.Figure()
-temp_alarms_df.set_index("sample_time",inplace=True)
+if len(temp_alarms_df) > 0:
+    fig_temp_alarms = go.Figure()
+    temp_alarms_df.set_index("sample_time",inplace=True)
 
-fig_temp_alarms.add_trace(
-    go.Scatter(
-        x=list(temp_alarms_df.index), 
-        y=list(temp_alarms_df['average_temperature']),
-        marker_size=5,
-        marker_color=['#F55030' for i in range(0,len(temp_alarms_df)) ],
-        mode='markers',
-        text=temp_alarms_df['temperature_threshold']
+    fig_temp_alarms.add_trace(
+        go.Scatter(
+            x=list(temp_alarms_df.index), 
+            y=list(temp_alarms_df['average_temperature']),
+            marker_size=5,
+            marker_color=['#F55030' for i in range(0,len(temp_alarms_df)) ],
+            mode='markers',
+            text=temp_alarms_df['temperature_threshold']
+        )
     )
-)
 
-# Add range slider
-fig_temp_alarms.update_layout(
-    title="Alarmes de Temperatura Média no Último Minuto",
-    xaxis_title="Tempo",
-    yaxis_title="Temperatura Média (Celsius)",
-    xaxis=dict(
-        rangeselector=dict(
-            buttons=list([
-                dict(count=1,
-                     label="1h",
-                     step="hour",
-                     stepmode="backward"),
-                dict(count=1,
-                     label="1d",
-                     step="day",
-                     stepmode="backward"),
-                dict(count=1,
-                     label="1m",
-                     step="month",
-                     stepmode="backward"),
-                dict(count=1,
-                     label="1y",
-                     step="year",
-                     stepmode="backward"),
-                dict(step="all")
-            ])
-        ),
-        rangeslider=dict(
-            visible=True
-        ),
-        type="date"
+    # Add range slider
+    fig_temp_alarms.update_layout(
+        title="Alarmes de Temperatura Média no Último Minuto",
+        xaxis_title="Tempo",
+        yaxis_title="Temperatura Média (Celsius)",
+        xaxis=dict(
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=1,
+                        label="1h",
+                        step="hour",
+                        stepmode="backward"),
+                    dict(count=1,
+                        label="1d",
+                        step="day",
+                        stepmode="backward"),
+                    dict(count=1,
+                        label="1m",
+                        step="month",
+                        stepmode="backward"),
+                    dict(count=1,
+                        label="1y",
+                        step="year",
+                        stepmode="backward"),
+                    dict(step="all")
+                ])
+            ),
+            rangeslider=dict(
+                visible=True
+            ),
+            type="date"
+        )
     )
-)
-temp_alarms_col.plotly_chart(fig_temp_alarms,use_container_width=True)
+    temp_alarms_col.plotly_chart(fig_temp_alarms,use_container_width=True)
