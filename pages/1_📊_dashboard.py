@@ -73,7 +73,6 @@ def load_iot_table():
     temp_df['sample_time'] = temp_df['sample_time'].astype(np.int64)
     temp_df['sample_time'] = pd.to_datetime(temp_df['sample_time'],unit="ms")
     temp_df = temp_df.sort_values("sample_time",ascending=True)
-    print ('\n\n\n',temp_df,'\n\n\n')
     
     light_df = iot_df[iot_df['device_data'].astype(str).str.contains("light")==True].copy()
     light_df['light'] = light_df['device_data'].map(lambda d : d['light'])
@@ -106,11 +105,15 @@ fig_temp = go.Figure()
 temp_df = temp_df[['sample_time','temperature','device']]
 temp_avr_df = temp_df.loc[temp_df['device'] == "avr"][['sample_time','temperature']]
 temp_esp_df = temp_df.loc[temp_df['device'] == "esp32"][['sample_time','temperature']]
+temp_py_df = temp_df.loc[temp_df['device'] == "py"][['sample_time','temperature']]
 
 temp_avr_df.set_index("sample_time",inplace=True)
 temp_avr_df = temp_avr_df.resample('1min').mean()
 temp_esp_df.set_index("sample_time",inplace=True)
 temp_esp_df = temp_esp_df.resample('1min').mean()
+temp_py_df.set_index("sample_time",inplace=True)
+temp_py_df = temp_py_df.resample('1min').mean()
+
 
 fig_temp.add_trace(
     go.Scatter(
@@ -127,6 +130,15 @@ fig_temp.add_trace(
         y=list(temp_esp_df['temperature']),
         mode='lines',
         name='esp32'
+    )
+)
+
+fig_temp.add_trace(
+    go.Scatter(
+        x=list(temp_py_df.index), 
+        y=list(temp_py_df['temperature']),
+        mode='lines',
+        name='py'
     )
 )
 
@@ -183,21 +195,35 @@ temp_col.plotly_chart(fig_temp,use_container_width=True)
 fig_light = go.Figure()
 light_df = light_df[['sample_time','light','device']]
 light_avr_df = light_df.loc[light_df['device'] == "avr"][['sample_time','light']]
-light_esp_df = light_df.loc[light_df['device'] == "esp32"][['sample_time','light']]
+#light_esp_df = light_df.loc[light_df['device'] == "esp32"][['sample_time','light']]
+light_py_df = light_df.loc[light_df['device'] == "py"][['sample_time','light']]
+
 
 light_avr_df.set_index("sample_time",inplace=True)
 light_avr_df = light_avr_df.resample('1min').mean()
-light_esp_df.set_index("sample_time",inplace=True)
-light_esp_df = light_esp_df.resample('1min').mean()
+#light_esp_df.set_index("sample_time",inplace=True)
+#light_esp_df = light_esp_df.resample('1min').mean()
+light_py_df.set_index("sample_time",inplace=True)
+light_py_df = light_py_df.resample('1min').mean()
 
 fig_light.add_trace(
     go.Scatter(
-        x=list(light_esp_df.index), 
-        y=list(light_esp_df['light']),
+        x=list(light_avr_df.index), 
+        y=list(light_avr_df['light']),
         mode='lines',
         name='avr'
     )
 )
+
+fig_light.add_trace(
+    go.Scatter(
+        x=list(light_py_df.index), 
+        y=list(light_py_df['light']),
+        mode='lines',
+        name='py'
+    )
+)
+
 
 # Add range slider
 fig_light.update_layout(
