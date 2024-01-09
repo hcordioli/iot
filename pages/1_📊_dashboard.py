@@ -144,7 +144,7 @@ fig_temp.add_trace(
 
 # Add range slider
 fig_temp.update_layout(
-    title="Variação de Temperatura",
+    title="Variação de Temperatura 🌡️",
     xaxis_title="Tempo",
     yaxis_title="Temperatura (C)",
     xaxis=dict(
@@ -226,7 +226,7 @@ fig_light.add_trace(
 
 # Add range slider
 fig_light.update_layout(
-    title="Variação de Luminosidade",
+    title="Variação de Luminosidade 💡",
     xaxis_title="Tempo",
     yaxis_title="Luminosidade (Lumens)",
     xaxis=dict(
@@ -277,7 +277,7 @@ if len(temp_alarms_df) > 0:
 
     # Add range slider
     fig_temp_alarms.update_layout(
-        title="Alarmes de Temperatura Média no Último Minuto",
+        title="Alarmes de Temperatura Média no Último Minuto 🌡️",
         xaxis_title="Tempo",
         yaxis_title="Temperatura Média (Celsius)",
         xaxis=dict(
